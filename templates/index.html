@@ -99,7 +99,11 @@
 const $ = id => document.getElementById(id);
 const SRC = [["h","Vatten","#2f6fd6"],["w","Vind","#2bb38a"],["s","Sol","#f2a900"],["b","Bio & geo","#1f8a1f"],["n","Kärnkraft","#e879a8"],["f","Fossilt","#6b6b6b"]];
 const N = 15, RH = 28, K = 7;
-const CAPTIONS = {1985:"Norge: 99 % av elen kom från vattenkraft.", 2000:"Paraguay exporterar mest el per person, från dammen Itaipú.", 2008:"Island bygger aluminiumsmältverk. Produktionen nästan dubblas 2005–2008."};
+const CAPTIONS = {1985:"Norge: 99 % av elen kom från vattenkraft.", 2000:"Paraguay exporterar mest el per person, från dammen Itaipú.", 2008:"Island bygger aluminiumsmältverk. Produktionen nästan dubblas 2005–2008.",
+  2012:"Sverige: rekordår för vattenkraft. Nettoexporten stiger från 7 till 20 TWh.",
+  2013:"Sverige: mindre vatten men rekordmycket vind. Exporten halveras till 10 TWh.",
+  2020:"Sverige: kärnkraften minskar efter reaktorstängningar, vindkraften ökar. Exporten ligger kvar på 25 TWh.",
+  2022:"Sverige: rekordexport på 33 TWh, trots energikrisen i Europa."};
 const fmt = (n, d = 1) => n.toLocaleString("sv-SE", {minimumFractionDigits: d, maximumFractionDigits: d});
 let D, year, playing = false, timer, A = "SWE", B = "DEU";
 const rows = {1: {}, 2: {}, 3: {}};
@@ -185,10 +189,14 @@ function render() {
 }
 function play() {
   playing = !playing; $("play").textContent = playing ? "Pausa" : "Spela";
-  clearInterval(timer);
+  clearTimeout(timer);
   if (!playing) return;
   if (year >= D.last) year = D.start;
-  timer = setInterval(() => { if (year >= D.last) { playing = false; $("play").textContent = "Spela"; clearInterval(timer); return; } year++; render(); }, 900);
+  const step = () => {
+    if (year >= D.last) { playing = false; $("play").textContent = "Spela"; return; }
+    year++; render(); timer = setTimeout(step, CAPTIONS[year] ? 3500 : 900);  // längre paus vid bildtexter
+  };
+  timer = setTimeout(step, 900);
 }
 
 (async () => {
