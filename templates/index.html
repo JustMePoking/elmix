@@ -29,7 +29,7 @@
   .lab{width:150px;text-align:right;padding-right:8px;font-size:.92rem;white-space:nowrap;display:flex;justify-content:flex-end;align-items:center;gap:6px}
   .lab.b{font-weight:800}
   .lab img{width:20px;height:14px;object-fit:cover;border-radius:2px}
-  .track{flex:1;padding-right:3rem;position:relative}
+  .track{flex:1;padding-right:calc(3rem + 4.8rem);position:relative}
   .bar{height:20px;display:flex;position:relative;transition:width .6s ease}
   .bar>div{height:100%;transition:width .6s ease}
   .val{position:absolute;left:100%;margin-left:6px;font-size:.88rem;line-height:20px;white-space:nowrap}
@@ -44,6 +44,7 @@
   .dv .val{top:0}
   .db.i .val{left:auto;right:100%;margin:0 6px 0 0}
   .gaplab{position:absolute;left:0;right:0;text-align:center;font-size:.78rem;color:var(--muted)}
+  .pr{position:absolute;right:0;top:0;line-height:var(--rh);width:4.6rem;text-align:right;font-size:.8rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
   .msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:2rem}
   .cap{font-weight:700;min-height:2.6rem;margin:.8rem 0 .4rem}
   .cards{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.6rem;font-size:.9rem}
@@ -70,7 +71,7 @@
 <main>
   <section>
     <h2>Elproduktion per person</h2>
-    <p class="sub">MWh per person och år, fördelat på källa</p>
+    <p class="sub">MWh per person och år, fördelat på källa<br><span style="font-size:.8rem">Grå siffra till höger: hushållens elpris inkl. skatter, eurocent/kWh (Europa, från 2007)</span></p>
     <div class="legend" id="legend"></div>
     <div class="chart" id="c1"><div class="bgyear" id="bgyear"></div></div>
     <div class="cap" id="cap"></div>
@@ -79,20 +80,20 @@
   </section>
   <section>
     <h2>Nettoexport och nettoimport</h2>
-    <p class="sub">MWh per person och år, sju största åt varje håll</p>
+    <p class="sub">MWh per person och år, sju största åt varje håll<br><span style="font-size:.8rem">Grå siffra till höger: hushållens elpris inkl. skatter, eurocent/kWh (Europa, från 2007)</span></p>
     <div class="legend"><span><i style="background:var(--imp)"></i>← Nettoimport</span><span><i style="background:var(--exp)"></i>Nettoexport →</span></div>
     <div class="chart" id="c2"></div>
     <div class="cards" id="cards2"></div>
   </section>
   <section>
     <h2>Nettoexport och nettoimport</h2>
-    <p class="sub">TWh per år för hela landet, sju största åt varje håll</p>
+    <p class="sub">TWh per år för hela landet, sju största åt varje håll<br><span style="font-size:.8rem">Grå siffra till höger: hushållens elpris inkl. skatter, eurocent/kWh (Europa, från 2007)</span></p>
     <div class="legend"><span><i style="background:var(--imp)"></i>← Nettoimport</span><span><i style="background:var(--exp)"></i>Nettoexport →</span></div>
     <div class="chart" id="c3"></div>
     <div class="cards" id="cards3"></div>
   </section>
 </main>
-<footer>Källa: Ember och Energy Institute via Our World in Data (CC BY 4.0). Fossilt = total produktion minus övriga källor. Exporterad el ingår i produktionen. Nettoimport = efterfrågan minus produktion, bruttoflöden finns inte i datat. Länder med minst 1 miljon invånare och data för alla år (plus Island i produktionsdiagrammet).</footer>
+<footer>Källa: Ember och Energy Institute via Our World in Data (CC BY 4.0). Fossilt = total produktion minus övriga källor. Exporterad el ingår i produktionen. Nettoimport = efterfrågan minus produktion, bruttoflöden finns inte i datat. Elpris: Eurostat (nrg_pc_204), hushåll som förbrukar 2 500–4 999 kWh/år, inklusive alla skatter och avgifter, årsmedel av halvårsvärden, i eurocent per kWh. Finns för europeiska länder från 2007. Länder med minst 1 miljon invånare och data för alla år (plus Island i produktionsdiagrammet).</footer>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -109,6 +110,7 @@ function rowEl(map, parent, k, html, cls = "row") {
   return map[k];
 }
 const totals = (k, i) => SRC.map(s => D.gen[k][s[0]][i] || 0);
+const price = k => { const v = D.price && D.price[k] && D.price[k][year - D.start]; return v == null ? "" : fmt(v, 1) + " c"; };
 const sum = a => a.reduce((x, y) => x + y, 0);
 
 function race(i) {
@@ -118,13 +120,14 @@ function race(i) {
   const shown = new Set(list.slice(0, N).map(o => o.k));
   Object.keys(rows[1]).forEach(k => { if (!shown.has(k)) { rows[1][k].classList.add("hide"); rows[1][k].style.transform = `translateY(${N * RH + 20}px)`; } });
   list.slice(0, N).forEach((o, n) => {
-    const e = rowEl(rows[1], c, o.k, `<div class="lab ${o.k===A||o.k===B?'b':''}"><span>${D.names[o.k]}</span>${flagImg(o.k)}</div><div class="track"><div class="bar">${SRC.map(s=>`<div style="background:${s[2]}"></div>`).join("")}<span class="val"></span></div></div>`);
+    const e = rowEl(rows[1], c, o.k, `<div class="lab ${o.k===A||o.k===B?'b':''}"><span>${D.names[o.k]}</span>${flagImg(o.k)}</div><div class="track"><div class="bar">${SRC.map(s=>`<div style="background:${s[2]}"></div>`).join("")}<span class="val"></span></div></div><span class="pr" title="Hushållens elpris inkl. skatter, eurocent/kWh"></span>`);
     if (e.classList.contains("hide")) { e.style.transform = `translateY(${N * RH + 20}px)`; void e.offsetWidth; }
     e.classList.remove("hide"); e.style.transform = `translateY(${n * RH}px)`;
     e.querySelector(".lab").className = "lab" + (o.k === A || o.k === B ? " b" : "");
     const bar = e.querySelector(".bar"); bar.style.width = (o.t / max * 100) + "%";
     [...bar.children].slice(0, 6).forEach((s, j) => s.style.width = (o.t ? o.v[j] / o.t * 100 : 0) + "%");
     e.querySelector(".val").textContent = fmt(o.t);
+    e.querySelector(".pr").textContent = price(o.k);
   });
   // världsmix
   const wv = SRC.map(s => D.world[s[0]][i] || 0), wt = sum(wv);
@@ -133,7 +136,7 @@ function race(i) {
   $("cards1").innerHTML = [A, B].map(k => {
     const o = list.find(x => x.k === k);
     if (!o) return `<div class="card"><b>${D.names[k]||k}</b><br>saknar data</div>`;
-    return `<div class="card"><b>${D.names[k]}</b> ${fmt(o.t)} MWh · plats ${list.indexOf(o)+1} av ${list.length}<div class="mini">${SRC.map((s,j)=>`<div style="width:${o.v[j]/o.t*100}%;background:${s[2]}"></div>`).join("")}</div></div>`;
+    return `<div class="card"><b>${D.names[k]}</b> ${fmt(o.t)} MWh · plats ${list.indexOf(o)+1} av ${list.length}${price(k)?` · hushållspris ${price(k)}/kWh`:""}<div class="mini">${SRC.map((s,j)=>`<div style="width:${o.v[j]/o.t*100}%;background:${s[2]}"></div>`).join("")}</div></div>`;
   }).join("");
 }
 
@@ -149,7 +152,7 @@ function diverge(panel, key, unit, dec) {
   const all = Object.keys(D.trade).map(k => ({k, v: D.trade[k][key][i]}));
   const exp = all.filter(o => o.v < 0).sort((a, b) => a.v - b.v).slice(0, K);
   const imp = all.filter(o => o.v > 0).sort((a, b) => b.v - a.v).slice(0, K);
-  const max = Math.max(...exp.concat(imp).map(o => Math.abs(o.v))) / 0.78;
+  const max = Math.max(...exp.concat(imp).map(o => Math.abs(o.v))) / 0.6;
   const place = {};
   exp.forEach((o, n) => place[o.k] = [n * RH, "e"]);
   imp.forEach((o, n) => place[o.k] = [H - RH - n * RH, "i"]);
@@ -157,18 +160,19 @@ function diverge(panel, key, unit, dec) {
   if (!c.querySelector(".center")) c.insertAdjacentHTML("afterbegin", '<div class="center"></div>');
   [...exp, ...imp].forEach(o => {
     const [y, side] = place[o.k];
-    const e = rowEl(rows[panel], c, o.k, `<span class="nm"></span><div class="db"><span class="val"></span></div>`, "row dv");
+    const e = rowEl(rows[panel], c, o.k, `<span class="nm"></span><div class="db"><span class="val"></span></div><span class="pr" title="Hushållens elpris inkl. skatter, eurocent/kWh"></span>`, "row dv");
     const nm = e.querySelector(".nm"), db = e.querySelector(".db");
     nm.className = "nm " + (side === "e" ? "l" : "r"); db.className = "db " + side;
     nm.innerHTML = (side === "e" ? `<span style="font-weight:${o.k===A||o.k===B?800:400}">${D.names[o.k]}</span>${flagImg(o.k)}` : `${flagImg(o.k)}<span style="font-weight:${o.k===A||o.k===B?800:400}">${D.names[o.k]}</span>`);
     e.classList.remove("hide"); e.style.transform = `translateY(${y}px)`;
     db.style.width = (Math.abs(o.v) / max * 50) + "%";
     db.querySelector(".val").textContent = fmt(Math.abs(o.v), Math.abs(o.v) >= 10 && key === "t" ? 0 : dec);
+    e.querySelector(".pr").textContent = price(o.k);
   });
   $("cards" + panel).innerHTML = [A, B].map(k => {
     const v = D.trade[k] && D.trade[k][key][i];
     if (v == null) return `<div class="card"><b>${D.names[k]||k}</b> saknar data</div>`;
-    return `<div class="card"><b>${D.names[k]}</b> ${v >= 0 ? "nettoimporterar" : "nettoexporterar"} ${fmt(Math.abs(v), dec)} ${unit}</div>`;
+    return `<div class="card"><b>${D.names[k]}</b> ${v >= 0 ? "nettoimporterar" : "nettoexporterar"} ${fmt(Math.abs(v), dec)} ${unit}${price(k)?` · hushållspris ${price(k)}/kWh`:""}</div>`;
   }).join("");
 }
 
