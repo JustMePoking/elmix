@@ -18,6 +18,8 @@ URL = "https://raw.githubusercontent.com/owid/energy-data/master/owid-energy-dat
 CACHE = Path(__file__).parent / "data" / "owid-energy-data.csv"
 MAX_AGE = 30 * 24 * 3600
 START, TRADE_START = 1985, 2000
+PRICE_URL = "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nrg_pc_204/?format=SDMX-CSV&compressed=false"
+PRICE_CACHE = Path(__file__).parent / "data" / "eurostat-nrg_pc_204.csv"
 
 # h=vatten, w=vind, s=sol, b=bio & geo, n=kärnkraft, f=fossilt (= total minus övriga)
 GROUPS = {
@@ -71,6 +73,40 @@ def flag(iso3):
     return c.alpha_2.lower() if c else ""
 
 
+def fetch_prices(flags, years):
+    """Hushållens elpris inkl. skatter och avgifter, eurocent/kWh (Eurostat nrg_pc_204,
+    band 2 500-4 999 kWh/år). Årsmedel av halvårsvärdena. Går något fel returneras {} och
+    sajten fungerar som vanligt utan priser."""
+    try:
+        if not PRICE_CACHE.exists() or time.time() - PRICE_CACHE.stat().st_mtime > MAX_AGE:
+            try:
+                print("Hämtar elpriser från Eurostat …")
+                r = requests.get(PRICE_URL, timeout=180, headers={"User-Agent": "elmix/1.0"})
+                r.raise_for_status()
+                PRICE_CACHE.write_bytes(r.content)
+            except requests.RequestException as e:
+                print(f"Kunde inte hämta elpriser ({e}).")
+        if not PRICE_CACHE.exists():
+            return {}
+        p = pd.read_csv(PRICE_CACHE, usecols=["nrg_cons", "tax", "currency", "geo", "TIME_PERIOD", "OBS_VALUE"])
+        p = p[(p["nrg_cons"] == "KWH2500-4999") & (p["tax"] == "I_TAX") & (p["currency"] == "EUR")]
+        p = p.assign(year=p["TIME_PERIOD"].astype(str).str[:4].astype(int))
+        annual = (p.groupby(["geo", "year"])["OBS_VALUE"].mean() * 100).to_dict()  # EUR -> eurocent
+        out = {}
+        for iso, f in flags.items():
+            if not f:
+                continue
+            geo = {"GR": "EL", "GB": "UK"}.get(f.upper(), f.upper())
+            ser = [r3(annual.get((geo, y), float("nan"))) for y in years]
+            if any(v is not None for v in ser):
+                out[iso] = ser
+        print(f"Elpriser för {len(out)} länder.")
+        return out
+    except Exception as e:  # priser är en bonus, ska aldrig stoppa bygget
+        print(f"Hoppar över elpriser: {e}")
+        return {}
+
+
 def build():
     fetch()
     df = pd.read_csv(CACHE)
@@ -100,7 +136,8 @@ def build():
             }
     w = df[df["country"] == "World"].drop_duplicates("year").set_index("year").reindex(years)
     return {"start": START, "tradeStart": TRADE_START, "last": last,
-            "names": names, "flags": flags, "gen": gen, "trade": trade, "world": mix(w)}
+            "names": names, "flags": flags, "gen": gen, "trade": trade, "world": mix(w),
+            "price": fetch_prices(flags, years)}
 
 
 PAYLOAD = build()
