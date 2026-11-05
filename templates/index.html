@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elmix – el per person genom tiden</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#111;--muted:#666;--line:#e4e4e4;--imp:#ef6c2f;--exp:#6c4fe0;--rh:28px}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fafafa;color:var(--ink);font-family:Inter,system-ui,sans-serif;color-scheme:light}
+  .top{position:sticky;top:0;z-index:5;background:#fafafaee;backdrop-filter:blur(6px);border-bottom:1px solid var(--line);
+       display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;align-items:center;padding:.7rem clamp(1rem,3vw,2.5rem)}
+  button{font:inherit;font-weight:700;border:0;background:var(--ink);color:#fff;border-radius:6px;padding:.5rem 1rem;cursor:pointer;min-width:5.5rem}
+  input[type=range]{flex:1;min-width:180px;accent-color:var(--ink)}
+  #yr{font-weight:800;font-size:1.3rem;min-width:3.5rem}
+  select{font:inherit;padding:.35rem .5rem;border:1px solid var(--line);border-radius:6px;background:#fff}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #2f6fd6;outline-offset:2px}
+  main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:2rem;padding:1.5rem clamp(1rem,3vw,2.5rem) 2rem}
+  h2{margin:0;font-size:1.7rem;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  .sub{color:var(--muted);margin:.25rem 0 .6rem}
+  .legend{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-size:.85rem;margin-bottom:.8rem;min-height:1.3rem}
+  .legend i{display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.3rem}
+  .chart{position:relative;overflow:hidden}
+  .bgyear{position:absolute;right:0;bottom:0;font-size:6rem;font-weight:800;color:#0000001c;line-height:1;pointer-events:none}
+  .row{position:absolute;left:0;right:0;height:var(--rh);display:flex;align-items:center;
+       transition:transform .6s ease,opacity .5s}
+  .row.hide{opacity:0;pointer-events:none}
+  .lab{width:150px;text-align:right;padding-right:8px;font-size:.92rem;white-space:nowrap;display:flex;justify-content:flex-end;align-items:center;gap:6px}
+  .lab.b{font-weight:800}
+  .lab img{width:20px;height:14px;object-fit:cover;border-radius:2px}
+  .track{flex:1;padding-right:3rem;position:relative}
+  .bar{height:20px;display:flex;position:relative;transition:width .6s ease}
+  .bar>div{height:100%;transition:width .6s ease}
+  .val{position:absolute;left:100%;margin-left:6px;font-size:.88rem;line-height:20px;white-space:nowrap}
+  /* diverging */
+  .row.dv{display:block}
+  .center{position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--line)}
+  .dv .nm{position:absolute;top:0;line-height:var(--rh);font-size:.9rem;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .dv .nm.l{right:calc(50% + 6px)} .dv .nm.r{left:calc(50% + 6px)}
+  .dv .nm img{width:20px;height:14px;object-fit:cover;border-radius:2px}
+  .dv .db{position:absolute;top:4px;height:20px;transition:width .6s ease}
+  .dv .db.e{left:50%;background:var(--exp)} .dv .db.i{right:50%;background:var(--imp)}
+  .dv .val{top:0}
+  .db.i .val{left:auto;right:100%;margin:0 6px 0 0}
+  .gaplab{position:absolute;left:0;right:0;text-align:center;font-size:.78rem;color:var(--muted)}
+  .msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:2rem}
+  .cap{font-weight:700;min-height:2.6rem;margin:.8rem 0 .4rem}
+  .cards{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.6rem;font-size:.9rem}
+  .card{flex:1;min-width:150px}
+  .card b{font-weight:800}
+  .mini{display:flex;height:5px;margin-top:.35rem;background:#e9e9e9}
+  .mini div{height:100%}
+  .wm{margin-top:.8rem;font-size:.9rem}
+  .wm .mini{height:20px;margin-top:.3rem}
+  .wm .mini div{color:#fff;font-size:.72rem;font-weight:700;padding:0 .35rem;line-height:20px;overflow:hidden;white-space:nowrap}
+  @media(max-width:480px){.lab{width:105px;font-size:.8rem}.bgyear{font-size:4rem}.top{gap:.5rem}}
+  footer{padding:0 clamp(1rem,3vw,2.5rem) 2rem;color:var(--muted);font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="top">
+  <button id="play">Spela</button>
+  <span id="yr">…</span>
+  <input type="range" id="slider" aria-label="År">
+  <label>Jämför <select id="selA"></select></label>
+  <label>med <select id="selB"></select></label>
+</div>
+
+<main>
+  <section>
+    <h2>Elproduktion per person</h2>
+    <p class="sub">MWh per person och år, fördelat på källa</p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="c1"><div class="bgyear" id="bgyear"></div></div>
+    <div class="cap" id="cap"></div>
+    <div class="wm" id="wm"></div>
+    <div class="cards" id="cards1"></div>
+  </section>
+  <section>
+    <h2>Nettoexport och nettoimport</h2>
+    <p class="sub">MWh per person och år, sju största åt varje håll</p>
+    <div class="legend"><span><i style="background:var(--imp)"></i>← Nettoimport</span><span><i style="background:var(--exp)"></i>Nettoexport →</span></div>
+    <div class="chart" id="c2"></div>
+    <div class="cards" id="cards2"></div>
+  </section>
+  <section>
+    <h2>Nettoexport och nettoimport</h2>
+    <p class="sub">TWh per år för hela landet, sju största åt varje håll</p>
+    <div class="legend"><span><i style="background:var(--imp)"></i>← Nettoimport</span><span><i style="background:var(--exp)"></i>Nettoexport →</span></div>
+    <div class="chart" id="c3"></div>
+    <div class="cards" id="cards3"></div>
+  </section>
+</main>
+<footer>Källa: Ember och Energy Institute via Our World in Data (CC BY 4.0). Fossilt = total produktion minus övriga källor. Exporterad el ingår i produktionen. Nettoimport = efterfrågan minus produktion, bruttoflöden finns inte i datat. Länder med minst 1 miljon invånare och data för alla år (plus Island i produktionsdiagrammet).</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const SRC = [["h","Vatten","#2f6fd6"],["w","Vind","#2bb38a"],["s","Sol","#f2a900"],["b","Bio & geo","#1f8a1f"],["n","Kärnkraft","#e879a8"],["f","Fossilt","#6b6b6b"]];
+const N = 15, RH = 28, K = 7;
+const CAPTIONS = {1985:"Norge: 99 % av elen kom från vattenkraft.", 2000:"Paraguay exporterar mest el per person, från dammen Itaipú.", 2008:"Island bygger aluminiumsmältverk. Produktionen nästan dubblas 2005–2008."};
+const fmt = (n, d = 1) => n.toLocaleString("sv-SE", {minimumFractionDigits: d, maximumFractionDigits: d});
+let D, year, playing = false, timer, A = "SWE", B = "DEU";
+const rows = {1: {}, 2: {}, 3: {}};
+
+const flagImg = k => D.flags[k] ? `<img src="https://flagcdn.com/w40/${D.flags[k]}.png" alt="">` : "";
+function rowEl(map, parent, k, html, cls = "row") {
+  if (!map[k]) { const e = document.createElement("div"); e.className = cls + " hide"; e.innerHTML = html; parent.appendChild(e); map[k] = e; }
+  return map[k];
+}
+const totals = (k, i) => SRC.map(s => D.gen[k][s[0]][i] || 0);
+const sum = a => a.reduce((x, y) => x + y, 0);
+
+function race(i) {
+  const c = $("c1"); c.style.height = N * RH + "px";
+  const list = Object.keys(D.gen).map(k => ({k, v: totals(k, i)})).map(o => ({...o, t: sum(o.v)})).sort((a, b) => b.t - a.t);
+  const max = list[0].t * 1.0;
+  const shown = new Set(list.slice(0, N).map(o => o.k));
+  Object.keys(rows[1]).forEach(k => { if (!shown.has(k)) { rows[1][k].classList.add("hide"); rows[1][k].style.transform = `translateY(${N * RH + 20}px)`; } });
+  list.slice(0, N).forEach((o, n) => {
+    const e = rowEl(rows[1], c, o.k, `<div class="lab ${o.k===A||o.k===B?'b':''}"><span>${D.names[o.k]}</span>${flagImg(o.k)}</div><div class="track"><div class="bar">${SRC.map(s=>`<div style="background:${s[2]}"></div>`).join("")}<span class="val"></span></div></div>`);
+    if (e.classList.contains("hide")) { e.style.transform = `translateY(${N * RH + 20}px)`; void e.offsetWidth; }
+    e.classList.remove("hide"); e.style.transform = `translateY(${n * RH}px)`;
+    e.querySelector(".lab").className = "lab" + (o.k === A || o.k === B ? " b" : "");
+    const bar = e.querySelector(".bar"); bar.style.width = (o.t / max * 100) + "%";
+    [...bar.children].slice(0, 6).forEach((s, j) => s.style.width = (o.t ? o.v[j] / o.t * 100 : 0) + "%");
+    e.querySelector(".val").textContent = fmt(o.t);
+  });
+  // världsmix
+  const wv = SRC.map(s => D.world[s[0]][i] || 0), wt = sum(wv);
+  $("wm").innerHTML = `<b>Världens elmix</b> <span style="color:var(--muted)">${fmt(wt)} MWh per person</span><div class="mini">${SRC.map((s, j) => `<div style="width:${wv[j]/wt*100}%;background:${s[2]}">${wv[j]/wt>.08?Math.round(wv[j]/wt*100)+" %":""}</div>`).join("")}</div>`;
+  // jämförelsekort
+  $("cards1").innerHTML = [A, B].map(k => {
+    const o = list.find(x => x.k === k);
+    if (!o) return `<div class="card"><b>${D.names[k]||k}</b><br>saknar data</div>`;
+    return `<div class="card"><b>${D.names[k]}</b> ${fmt(o.t)} MWh · plats ${list.indexOf(o)+1} av ${list.length}<div class="mini">${SRC.map((s,j)=>`<div style="width:${o.v[j]/o.t*100}%;background:${s[2]}"></div>`).join("")}</div></div>`;
+  }).join("");
+}
+
+function diverge(panel, key, unit, dec) {
+  const c = $("c" + panel), i = year - D.tradeStart, H = (2 * K) * RH + 36;
+  c.style.height = H + "px";
+  c.querySelectorAll(".msg").forEach(m => m.remove());
+  if (i < 0) {
+    Object.values(rows[panel]).forEach(e => e.classList.add("hide"));
+    c.insertAdjacentHTML("beforeend", `<div class="msg">Import och export finns för alla länder från ${D.tradeStart}.<br>Panelen fylls när året nått dit.</div>`);
+    $("cards" + panel).innerHTML = ""; return;
+  }
+  const all = Object.keys(D.trade).map(k => ({k, v: D.trade[k][key][i]}));
+  const exp = all.filter(o => o.v < 0).sort((a, b) => a.v - b.v).slice(0, K);
+  const imp = all.filter(o => o.v > 0).sort((a, b) => b.v - a.v).slice(0, K);
+  const max = Math.max(...exp.concat(imp).map(o => Math.abs(o.v))) / 0.78;
+  const place = {};
+  exp.forEach((o, n) => place[o.k] = [n * RH, "e"]);
+  imp.forEach((o, n) => place[o.k] = [H - RH - n * RH, "i"]);
+  Object.keys(rows[panel]).forEach(k => { if (!place[k]) rows[panel][k].classList.add("hide"); });
+  if (!c.querySelector(".center")) c.insertAdjacentHTML("afterbegin", '<div class="center"></div>');
+  [...exp, ...imp].forEach(o => {
+    const [y, side] = place[o.k];
+    const e = rowEl(rows[panel], c, o.k, `<span class="nm"></span><div class="db"><span class="val"></span></div>`, "row dv");
+    const nm = e.querySelector(".nm"), db = e.querySelector(".db");
+    nm.className = "nm " + (side === "e" ? "l" : "r"); db.className = "db " + side;
+    nm.innerHTML = (side === "e" ? `<span style="font-weight:${o.k===A||o.k===B?800:400}">${D.names[o.k]}</span>${flagImg(o.k)}` : `${flagImg(o.k)}<span style="font-weight:${o.k===A||o.k===B?800:400}">${D.names[o.k]}</span>`);
+    e.classList.remove("hide"); e.style.transform = `translateY(${y}px)`;
+    db.style.width = (Math.abs(o.v) / max * 50) + "%";
+    db.querySelector(".val").textContent = fmt(Math.abs(o.v), Math.abs(o.v) >= 10 && key === "t" ? 0 : dec);
+  });
+  $("cards" + panel).innerHTML = [A, B].map(k => {
+    const v = D.trade[k] && D.trade[k][key][i];
+    if (v == null) return `<div class="card"><b>${D.names[k]||k}</b> saknar data</div>`;
+    return `<div class="card"><b>${D.names[k]}</b> ${v >= 0 ? "nettoimporterar" : "nettoexporterar"} ${fmt(Math.abs(v), dec)} ${unit}</div>`;
+  }).join("");
+}
+
+function render() {
+  $("yr").textContent = year; $("bgyear").textContent = year; $("slider").value = year;
+  $("cap").textContent = CAPTIONS[year] || "";
+  race(year - D.start);
+  diverge(2, "p", "MWh per person", 1);
+  diverge(3, "t", "TWh", 1);
+}
+function play() {
+  playing = !playing; $("play").textContent = playing ? "Pausa" : "Spela";
+  clearInterval(timer);
+  if (!playing) return;
+  if (year >= D.last) year = D.start;
+  timer = setInterval(() => { if (year >= D.last) { playing = false; $("play").textContent = "Spela"; clearInterval(timer); return; } year++; render(); }, 900);
+}
+
+(async () => {
+  D = await (await fetch("/api/data")).json();
+  year = D.start;
+  const s = $("slider"); s.min = D.start; s.max = D.last; s.value = year;
+  s.oninput = () => { year = +s.value; render(); };
+  $("play").onclick = play;
+  $("legend").innerHTML = SRC.map(s => `<span><i style="background:${s[2]}"></i>${s[1]}</span>`).join("");
+  const keys = Object.keys(D.names).sort((a, b) => D.names[a].localeCompare(D.names[b]));
+  const opts = keys.map(k => `<option value="${k}">${D.names[k]}</option>`).join("");
+  ["selA", "selB"].forEach(id => $(id).innerHTML = opts);
+  $("selA").value = A; $("selB").value = B;
+  $("selA").onchange = e => { A = e.target.value; render(); };
+  $("selB").onchange = e => { B = e.target.value; render(); };
+  render();
+})();
+</script>
+</body>
+</html>
